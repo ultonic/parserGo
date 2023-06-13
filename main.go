@@ -93,7 +93,7 @@ func main() {
 }
 
 func doEnrichment() {
-	db, err := sql.Open("mysql", "root:Ppu5V2Jfor@tcp(127.0.0.1:3306)/parser")
+	db, err := sql.Open("mysql", "root:new_password@tcp(127.0.0.1:3306)/parser")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -155,7 +155,7 @@ func doEnrichment() {
 }
 
 func handleDocuments() {
-	db, err := sql.Open("mysql", "root:Ppu5V2Jfor@tcp(127.0.0.1:3306)/parser")
+	db, err := sql.Open("mysql", "root:new_password@tcp(127.0.0.1:3306)/parser")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -189,7 +189,7 @@ func handleDocuments() {
 
 func writeIntoDB(documents []Document) error {
 	// Open a connection to the MySQL database
-	db, err := sql.Open("mysql", "root:Ppu5V2Jfor@tcp(127.0.0.1:3306)/parser")
+	db, err := sql.Open("mysql", "root:new_password@tcp(127.0.0.1:3306)/parser")
 	if err != nil {
 		log.Fatal(err)
 	}
