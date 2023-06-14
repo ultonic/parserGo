@@ -141,7 +141,7 @@ func doEnrichment() {
 			}
 			defer stmt.Close()
 
-			content, _ := json.Marshal(response.Content)
+			content, _ := json.Marshal(body)
 
 			// Execute the SQL statement with the provided values
 			_, err = stmt.Exec(response.Content.Comment, response.Content.StopReason, true, content, guid)
