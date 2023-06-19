@@ -340,9 +340,7 @@ func convertToDayRange(date string) (string, string) {
 }
 
 func requestDocuments(date string) (*PageData, error) {
-	fmt.Println(date)
 	start, end := convertToDayRange(date)
-	fmt.Println(start, end)
 
 	targetUrl := fmt.Sprintf("https://fedresurs.ru/backend/encumbrances?offset=0&limit=10000&searchString=%s&group=Leasing&publishDateStart=%s&publishDateEnd=%s", "%D0%B4%D0%BE%D0%B3%D0%BE%D0%B2%D0%BE%D1%80", start, end)
 
@@ -355,8 +353,6 @@ func requestDocuments(date string) (*PageData, error) {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36")
 	req.Header.Set("Accept", "application/json, text/plain, */*")
 	req.Header.Set("Referer", fmt.Sprintf("https://fedresurs.ru/search/encumbrances?offset=0&limit=10000&searchString=%s&group=Leasing&publishDateStart=%s&publishDateEnd=%s", "%D0%B4%D0%BE%D0%B3%D0%BE%D0%B2%D0%BE%D1%80", start, end))
-
-	fmt.Println(fmt.Sprintf("https://fedresurs.ru/search/encumbrances?offset=0&limit=10000&searchString=%s&group=Leasing&publishDateStart=%s&publishDateEnd=%s", "%D0%B4%D0%BE%D0%B3%D0%BE%D0%B2%D0%BE%D1%80", start, end))
 
 	// Introduce a delay before sending the request
 	time.Sleep(5 * time.Second)
