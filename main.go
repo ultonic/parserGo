@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -17,24 +16,25 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "myapp",
-	Short: "My Application",
-	Long:  "A command-line application",
-	Run: func(cmd *cobra.Command, args []string) {
-		handleDocuments()
+const (
+	dbConnectionString = "root:Ppu5V2Jfor@tcp(127.0.0.1:3306)/parser"
+)
 
-	},
-}
+var (
+	rootCmd = &cobra.Command{
+		Use:   "myapp",
+		Short: "My Application",
+		Long:  "A command-line application",
+		Run:   runRootCmd,
+	}
 
-var secondCmd = &cobra.Command{
-	Use:   "second",
-	Short: "Second Command",
-	Long:  "A second command",
-	Run: func(cmd *cobra.Command, args []string) {
-		doEnrichment()
-	},
-}
+	secondCmd = &cobra.Command{
+		Use:   "second",
+		Short: "Second Command",
+		Long:  "A second command",
+		Run:   runSecondCmd,
+	}
+)
 
 type DetailedContract struct {
 	Content struct {
@@ -87,18 +87,35 @@ type PageData struct {
 func main() {
 	rootCmd.AddCommand(secondCmd)
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
 
-func doEnrichment() {
-	db, err := sql.Open("mysql", "root:new_password@tcp(127.0.0.1:3306)/parser")
+func runRootCmd(cmd *cobra.Command, args []string) {
+	db, err := getDBConnection()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
+	handleDocuments(db)
+}
+
+func runSecondCmd(cmd *cobra.Command, args []string) {
+	db, err := getDBConnection()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	doEnrichment(db)
+}
+
+func getDBConnection() (*sql.DB, error) {
+	return sql.Open("mysql", dbConnectionString)
+}
+
+func doEnrichment(db *sql.DB) {
 	rows, err := db.Query("SELECT guid FROM contract WHERE enriched = false")
 	if err != nil {
 		log.Fatal(err)
@@ -134,36 +151,28 @@ func doEnrichment() {
 		// fmt.Printf("Type of Comment: %T\n", response.Content.Comment)
 		// fmt.Printf("Type of StopReason: %T\n", response.Content.StopReason)
 
-		if response.Content.Comment != "" || response.Content.StopReason != "" {
-			stmt, err := db.Prepare("UPDATE contract SET user_comment = ?, stop_reason = ?, enriched = ?, item_raw = ? WHERE guid = ?")
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer stmt.Close()
+		content, _ := json.Marshal(body)
 
-			content, _ := json.Marshal(body)
-
-			// Execute the SQL statement with the provided values
-			_, err = stmt.Exec(response.Content.Comment, response.Content.StopReason, true, content, guid)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			fmt.Println("Data updated successfully!")
+		stmt, err := db.Prepare("UPDATE contract SET user_comment = ?, stop_reason = ?, enriched = ?, item_raw = ? WHERE guid = ?")
+		if err != nil {
+			log.Fatal(err)
 		}
+		defer stmt.Close()
+
+		// Execute the SQL statement with the provided values
+		_, err = stmt.Exec(response.Content.Comment, response.Content.StopReason, true, content, guid)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("Data updated successfully!")
 	}
 }
 
-func handleDocuments() {
-	db, err := sql.Open("mysql", "root:new_password@tcp(127.0.0.1:3306)/parser")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
+func handleDocuments(db *sql.DB) {
 	// Query the latest date from the contract table
 	var latestDateStr sql.NullString
-	err = db.QueryRow("SELECT DATE_FORMAT(MAX(date), '%Y-%m-%d %H:%i:%s') FROM contract").Scan(&latestDateStr)
+	err := db.QueryRow("SELECT DATE_FORMAT(MAX(date), '%Y-%m-%d %H:%i:%s') FROM contract").Scan(&latestDateStr)
 	if err != nil && err != sql.ErrNoRows {
 		log.Fatal(err)
 	}
@@ -174,8 +183,16 @@ func handleDocuments() {
 		if err != nil {
 			log.Fatal(err)
 		}
+		date = date.AddDate(0, 0, 1)
+
+		currentDate := time.Now().UTC().Truncate(24 * time.Hour)
+
+		if date.Year() == currentDate.Year() && date.Month() == currentDate.Month() && date.Day() == currentDate.Day() {
+			log.Fatal(fmt.Println("The last date is today!"))
+			return
+		}
 	} else {
-		date = time.Now().UTC().Truncate(24 * time.Hour)
+		date, _ = time.Parse("2006-01-02 15:04:05", "2023-06-01 06:44:29")
 	}
 
 	// Step 1: Request list of documents
@@ -184,17 +201,10 @@ func handleDocuments() {
 		log.Fatalf("Failed to perform operation: %s", err)
 	}
 
-	writeIntoDB(pageData.Documents)
+	writeIntoDB(db, pageData.Documents)
 }
 
-func writeIntoDB(documents []Document) error {
-	// Open a connection to the MySQL database
-	db, err := sql.Open("mysql", "root:new_password@tcp(127.0.0.1:3306)/parser")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
+func writeIntoDB(db *sql.DB, documents []Document) error {
 	for _, doc := range documents {
 		if doc.Type == "Заключение договора финансовой аренды (лизинга)" {
 			continue
@@ -321,20 +331,19 @@ func findDotIndex(dateString string) int {
 }
 
 func convertToDayRange(date string) (string, string) {
-	layout := "2006-01-02T15:04:05"
-	parsedTime, err := time.Parse(layout, date)
-	if err != nil {
-		log.Fatal(err)
-	}
+	datePart := strings.Split(date, "T")[0]
 
-	start := parsedTime.Format("2006-01-02T00:00:00.000")
-	end := parsedTime.Format("2006-01-02T23:59:59.999")
+	start := datePart + "T00:00:00.000"
+	end := datePart + "T23:59:59.999"
 
 	return start, end
 }
 
 func requestDocuments(date string) (*PageData, error) {
+	fmt.Println(date)
 	start, end := convertToDayRange(date)
+	fmt.Println(start, end)
+
 	targetUrl := fmt.Sprintf("https://fedresurs.ru/backend/encumbrances?offset=0&limit=10000&searchString=%s&group=Leasing&publishDateStart=%s&publishDateEnd=%s", "%D0%B4%D0%BE%D0%B3%D0%BE%D0%B2%D0%BE%D1%80", start, end)
 
 	client := &http.Client{}
@@ -346,6 +355,8 @@ func requestDocuments(date string) (*PageData, error) {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36")
 	req.Header.Set("Accept", "application/json, text/plain, */*")
 	req.Header.Set("Referer", fmt.Sprintf("https://fedresurs.ru/search/encumbrances?offset=0&limit=10000&searchString=%s&group=Leasing&publishDateStart=%s&publishDateEnd=%s", "%D0%B4%D0%BE%D0%B3%D0%BE%D0%B2%D0%BE%D1%80", start, end))
+
+	fmt.Println(fmt.Sprintf("https://fedresurs.ru/search/encumbrances?offset=0&limit=10000&searchString=%s&group=Leasing&publishDateStart=%s&publishDateEnd=%s", "%D0%B4%D0%BE%D0%B3%D0%BE%D0%B2%D0%BE%D1%80", start, end))
 
 	// Introduce a delay before sending the request
 	time.Sleep(5 * time.Second)
