@@ -284,7 +284,7 @@ func extractLesseeInfo(mainInfo string) string {
 }
 
 func extractOgrnInfo(mainInfo string) string {
-	re := regexp.MustCompile(`ОГРН:\s(\d+)`)
+	re := regexp.MustCompile(`Лизингополучатель.*?ОГРН:\s*(\d+)`)
 	match := re.FindStringSubmatch(mainInfo)
 	if len(match) > 1 {
 		lessorInfo := match[1]
@@ -295,7 +295,7 @@ func extractOgrnInfo(mainInfo string) string {
 }
 
 func extractInnInfo(mainInfo string) string {
-	re := regexp.MustCompile(`ИНН:\s(\d+)`)
+	re := regexp.MustCompile(`Лизингополучатель.*?ИНН:\s*(\d+)`)
 	match := re.FindStringSubmatch(mainInfo)
 	if len(match) > 1 {
 		lessorInfo := match[1]
