@@ -233,9 +233,6 @@ func translateContractType(contractType string) string {
 
 func writeIntoDB(db *sql.DB, documents []Document) error {
 	for _, doc := range documents {
-		if doc.Type == "Заключение договора финансовой аренды (лизинга)" {
-			continue
-		}
 		var contract Contract
 		contract.Type = translateContractType(doc.Type)
 		layout := "2006-01-02T15:04:05"
