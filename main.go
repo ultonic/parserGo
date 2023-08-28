@@ -51,8 +51,8 @@ type DetailedContract struct {
 		DatePublish      string    `json:"datePublish"`
 		LessorsCompanies []Company `json:"lessorsCompanies"`
 		LesseesCompanies []Company `json:"lesseesCompanies"`
-		Number           string    `json:"number"`
 	} `json:"content"`
+	Number string `json:"number"`
 }
 
 type Document struct {
@@ -173,7 +173,7 @@ func doEnrichment(db *sql.DB) {
 		defer stmt.Close()
 
 		// Execute the SQL statement with the provided values
-		_, err = stmt.Exec(response.Content.Number, response.Content.ContractNumber, response.Content.LessorsCompanies[0].FullName, response.Content.LesseesCompanies[0].FullName, response.Content.LesseesCompanies[0].Ogrn, response.Content.LesseesCompanies[0].Inn, response.Content.Comment, response.Content.StopReason, true, content, guid)
+		_, err = stmt.Exec(response.Number, response.Content.ContractNumber, response.Content.LessorsCompanies[0].FullName, response.Content.LesseesCompanies[0].FullName, response.Content.LesseesCompanies[0].Ogrn, response.Content.LesseesCompanies[0].Inn, response.Content.Comment, response.Content.StopReason, true, content, guid)
 		if err != nil {
 			log.Fatal(err)
 		}
