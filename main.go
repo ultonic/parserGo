@@ -36,10 +36,22 @@ var (
 	}
 )
 
+type Company struct {
+	FullName string `json:"fullName"`
+	Inn      string `json:"inn"`
+	Ogrn     string `json:"ogrn"`
+	Type     string `json:"type"`
+}
+
 type DetailedContract struct {
 	Content struct {
-		StopReason string `json:"stopReason"`
-		Comment    string `json:"text"`
+		StopReason       string    `json:"stopReason"`
+		Comment          string    `json:"text"`
+		ContractNumber   string    `json:"contractNumber"`
+		DatePublish      string    `json:"datePublish"`
+		LessorsCompanies []Company `json:"lessorsCompanies"`
+		LesseesCompanies []Company `json:"lesseesCompanies"`
+		Number           string    `json:"number"`
 	} `json:"content"`
 }
 
@@ -153,14 +165,14 @@ func doEnrichment(db *sql.DB) {
 
 		content, _ := json.Marshal(body)
 
-		stmt, err := db.Prepare("UPDATE contract SET user_comment = ?, stop_reason = ?, enriched = ?, item_raw = ? WHERE guid = ?")
+		stmt, err := db.Prepare("UPDATE contract SET number = ?, contract = ?, lessor = ?, lessee = ?, ogrn = ?, inn = ?, user_comment = ?, stop_reason = ?, enriched = ?, item_raw = ? WHERE guid = ?")
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer stmt.Close()
 
 		// Execute the SQL statement with the provided values
-		_, err = stmt.Exec(response.Content.Comment, response.Content.StopReason, true, content, guid)
+		_, err = stmt.Exec(response.Content.Number, response.Content.ContractNumber, response.Content.LessorsCompanies, response.Content.LesseesCompanies, response.Content.LesseesCompanies[0].Ogrn, response.Content.LesseesCompanies[0].Inn, response.Content.Comment, response.Content.StopReason, true, content, guid)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -204,13 +216,27 @@ func handleDocuments(db *sql.DB) {
 	writeIntoDB(db, pageData.Documents)
 }
 
+func translateContractType(contractType string) string {
+	translationMapping := map[string]string{
+		"ChangeFinancialLeaseContract": "Изменение договора финансовой аренды (лизинга)",
+		"StopFinancialLeaseContract":   "Прекращение договора финансовой аренды (лизинга)",
+		"FinancialLeaseContract":       "Заключение договора финансовой аренды (лизинга)",
+	}
+
+	translatedType, found := translationMapping[contractType]
+	if !found {
+		translatedType = contractType
+	}
+	return translatedType
+}
+
 func writeIntoDB(db *sql.DB, documents []Document) error {
 	for _, doc := range documents {
 		if doc.Type == "Заключение договора финансовой аренды (лизинга)" {
 			continue
 		}
 		var contract Contract
-		contract.Type = doc.Type
+		contract.Type = translateContractType(doc.Type)
 		layout := "2006-01-02T15:04:05"
 
 		pubDate := doc.PublishDate
