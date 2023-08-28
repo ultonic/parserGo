@@ -165,6 +165,7 @@ func doEnrichment(db *sql.DB) {
 
 		content, _ := json.Marshal(body)
 
+		fmt.Println(response)
 		stmt, err := db.Prepare("UPDATE contract SET number = ?, contract = ?, lessor = ?, lessee = ?, ogrn = ?, inn = ?, user_comment = ?, stop_reason = ?, enriched = ?, item_raw = ? WHERE guid = ?")
 		if err != nil {
 			log.Fatal(err)
@@ -172,7 +173,7 @@ func doEnrichment(db *sql.DB) {
 		defer stmt.Close()
 
 		// Execute the SQL statement with the provided values
-		_, err = stmt.Exec(response.Content.Number, response.Content.ContractNumber, response.Content.LessorsCompanies, response.Content.LesseesCompanies, response.Content.LesseesCompanies[0].Ogrn, response.Content.LesseesCompanies[0].Inn, response.Content.Comment, response.Content.StopReason, true, content, guid)
+		_, err = stmt.Exec(response.Content.Number, response.Content.ContractNumber, response.Content.LessorsCompanies[0].FullName, response.Content.LesseesCompanies[0].FullName, response.Content.LesseesCompanies[0].Ogrn, response.Content.LesseesCompanies[0].Inn, response.Content.Comment, response.Content.StopReason, true, content, guid)
 		if err != nil {
 			log.Fatal(err)
 		}
