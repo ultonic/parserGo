@@ -165,6 +165,25 @@ func doEnrichment(db *sql.DB) {
 
 		content, _ := json.Marshal(body)
 
+		var lessorFullName string
+		if len(response.Content.LessorsCompanies) > 0 {
+			lessorFullName = response.Content.LessorsCompanies[0].FullName
+		} else {
+			lessorFullName = "" // Assign an appropriate default value
+		}
+
+		// Check if the LesseesCompanies slice is not empty before accessing its elements
+		var lesseeFullName, lesseeOgrn, lesseeInn string
+		if len(response.Content.LesseesCompanies) > 0 {
+			lesseeFullName = response.Content.LesseesCompanies[0].FullName
+			lesseeOgrn = response.Content.LesseesCompanies[0].Ogrn
+			lesseeInn = response.Content.LesseesCompanies[0].Inn
+		} else {
+			lesseeFullName = "" // Assign an appropriate default value
+			lesseeOgrn = ""
+			lesseeInn = ""
+		}
+
 		fmt.Println(response)
 		stmt, err := db.Prepare("UPDATE contract SET number = ?, contract = ?, lessor = ?, lessee = ?, ogrn = ?, inn = ?, user_comment = ?, stop_reason = ?, enriched = ?, item_raw = ? WHERE guid = ?")
 		if err != nil {
@@ -173,7 +192,7 @@ func doEnrichment(db *sql.DB) {
 		defer stmt.Close()
 
 		// Execute the SQL statement with the provided values
-		_, err = stmt.Exec(response.Number, response.Content.ContractNumber, response.Content.LessorsCompanies[0].FullName, response.Content.LesseesCompanies[0].FullName, response.Content.LesseesCompanies[0].Ogrn, response.Content.LesseesCompanies[0].Inn, response.Content.Comment, response.Content.StopReason, true, content, guid)
+		_, err = stmt.Exec(response.Number, response.Content.ContractNumber, lessorFullName, lesseeFullName, lesseeOgrn, lesseeInn, response.Content.Comment, response.Content.StopReason, true, content, guid)
 		if err != nil {
 			log.Fatal(err)
 		}
