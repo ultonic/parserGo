@@ -43,14 +43,23 @@ type Company struct {
 	Type     string `json:"type"`
 }
 
+type IndividualEntrepreneur struct {
+	FullName string `json:"fio"`
+	Inn      string `json:"inn"`
+	Ogrn     string `json:"ogrnip"`
+	Type     string `json:"type"`
+}
+
 type DetailedContract struct {
 	Content struct {
-		StopReason       string    `json:"stopReason"`
-		Comment          string    `json:"text"`
-		ContractNumber   string    `json:"contractNumber"`
-		DatePublish      string    `json:"datePublish"`
-		LessorsCompanies []Company `json:"lessorsCompanies"`
-		LesseesCompanies []Company `json:"lesseesCompanies"`
+		StopReason                     string                   `json:"stopReason"`
+		Comment                        string                   `json:"text"`
+		ContractNumber                 string                   `json:"contractNumber"`
+		DatePublish                    string                   `json:"datePublish"`
+		LessorsCompanies               []Company                `json:"lessorsCompanies"`
+		LesseesCompanies               []Company                `json:"lesseesCompanies"`
+		LessorsIndividualEntrepreneurs []IndividualEntrepreneur `json:"lessorsIndividualEntrepreneurs"`
+		LesseesIndividualEntrepreneurs []IndividualEntrepreneur `json:"lesseesIndividualEntrepreneurs"`
 	} `json:"content"`
 	Number string `json:"number"`
 }
@@ -166,22 +175,34 @@ func doEnrichment(db *sql.DB) {
 		content, _ := json.Marshal(body)
 
 		var lessorFullName string
+
 		if len(response.Content.LessorsCompanies) > 0 {
 			lessorFullName = response.Content.LessorsCompanies[0].FullName
 		} else {
-			lessorFullName = "" // Assign an appropriate default value
+			if len(response.Content.LessorsIndividualEntrepreneurs) > 0 {
+				lessorFullName = response.Content.LessorsIndividualEntrepreneurs[0].FullName
+			} else {
+				lessorFullName = "" // Assign an appropriate default value
+			}
 		}
 
 		// Check if the LesseesCompanies slice is not empty before accessing its elements
 		var lesseeFullName, lesseeOgrn, lesseeInn string
+
 		if len(response.Content.LesseesCompanies) > 0 {
 			lesseeFullName = response.Content.LesseesCompanies[0].FullName
 			lesseeOgrn = response.Content.LesseesCompanies[0].Ogrn
 			lesseeInn = response.Content.LesseesCompanies[0].Inn
 		} else {
-			lesseeFullName = "" // Assign an appropriate default value
-			lesseeOgrn = ""
-			lesseeInn = ""
+			if len(response.Content.LesseesIndividualEntrepreneurs) > 0 {
+				lesseeFullName = response.Content.LesseesIndividualEntrepreneurs[0].FullName
+				lesseeOgrn = response.Content.LesseesIndividualEntrepreneurs[0].Ogrn
+				lesseeInn = response.Content.LesseesIndividualEntrepreneurs[0].Inn
+			} else {
+				lesseeFullName = "" // Assign an appropriate default value
+				lesseeOgrn = ""
+				lesseeInn = ""
+			}
 		}
 
 		fmt.Println(response)
